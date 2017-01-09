@@ -16,7 +16,7 @@ var args;
 lively.lang.promise.chain([
   () => { // prep
     modules.System.trace = true
-    cacheMocha("file://" + mochaDir);
+    cacheMocha(fileUri(mochaDir));
     modules.unwrapModuleLoad();
     readProcessArgs();
   },
@@ -29,15 +29,23 @@ lively.lang.promise.chain([
   (_, state) => console.log(`${step++}. Running tests in\n  ${state.testFiles.join("\n  ")}`),
   (_, state) => {
     lively.modules.changeSystem(lively.modules.getSystem("system-for-test"), true);
-    cacheMocha("file://" + mochaDir);
+    cacheMocha(fileUri(mochaDir));
     mochaEs6.installSystemInstantiateHook();
-    return mochaEs6.runTestFiles(state.testFiles, {package: "file://" + dir});
+    return mochaEs6.runTestFiles(state.testFiles, {package: fileUri(dir)});
   },
   failureCount => process.exit(failureCount)
 ]).catch(err => {
   console.error(err.stack || err);
   process.exit(1);
 })
+
+// path must be absolute
+function fileUri(path) {
+  if (process.platform == 'win32') {
+    path = '/' + path.replace(/\\/g, '/');
+  }
+  return 'file://' + path;
+}
 
 function readProcessArgs() {
   args = parseArgs(process.argv.slice(2), {
@@ -65,7 +73,7 @@ function findTestFiles(files) {
           glob(f, {nodir: true, cwd: dir}, (err, files) =>
             err ? reject(err) : resolve(files))))); })
     .then(allFiles => allFiles.reduce((all, files) => all.concat(files)))
-    .then(files => files.map(f => "file://" + path.join(dir, f)))
+    .then(files => files.map(f => fileUri(path.join(dir, f))))
 }
 
 function cacheMocha(mochaDirURL) {
